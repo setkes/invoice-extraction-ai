@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice Extraction</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            font-size: 13px;
+            color: #1a1a1a;
+            background: #f5f5f5;
+        }
+
+        .page {
+            width: 90%;
+            margin: 32px auto;
+            padding: 0;
+        }
+
+        /* ── Header ── */
+        .header {
+            margin-bottom: 20px;
+        }
+
+        .header-left h1 {
+            margin: 0 0 2px 0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .header-left p {
+            margin: 0 0 10px 0;
+            color: #888;
+            font-size: 12px;
+        }
+
+        /* ── Upload form ── */
+        /* Upload form: sends the PDF to the POST /upload endpoint */
+        /* enctype="multipart/form-data" is required for file uploads */
+        .upload-form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .upload-form input[type="file"] {
+            border: 1px solid #ccc;
+            background: #fff;
+            padding: 5px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+            color: #444;
+        }
+
+        .upload-form button {
+            padding: 6px 18px;
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+
+        .upload-form button:hover {
+            background: #333;
+        }
+
+        /* ── Table wrapper ── */
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* ── Header row ── */
+        thead th {
+            background: #f9f9f9;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+            text-align: left;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 7px 9px;
+            white-space: nowrap;
+        }
+
+        thead th:first-child {
+            width: 32px;
+            padding: 7px 5px;
+        }
+
+        /* ── Body rows ── */
+        tbody td {
+            border-bottom: 1px solid #f0f0f0;
+            padding: 6px 9px;
+            vertical-align: middle;
+            color: #222;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover td {
+            background: #fafafa;
+        }
+
+        /* ── Cell helpers ── */
+        .num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .muted { color: #aaa; }
+
+        .nowrap { white-space: nowrap; }
+
+        .col-file {
+            font-weight: 600;
+            color: #1a1a1a;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .col-wide {
+            min-width: 200px;
+            max-width: 300px;
+        }
+
+        .col-addr {
+            min-width: 220px;
+            max-width: 320px;
+            white-space: pre-line;
+            line-height: 1.5;
+        }
+
+        .col-notes {
+            min-width: 220px;
+            max-width: 340px;
+            line-height: 1.5;
+            color: #444;
+            font-style: italic;
+        }
+
+        .col-iban {
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .col-id {
+            color: #999;
+            font-size: 11px;
+        }
+
+        /* ── Duplicate badge ── */
+        .duplicate-yes {
+            display: inline-block;
+            padding: 2px 7px;
+            border: 1px solid #dfb1b1;
+            background: #fff0f0;
+            color: #8a2d2d;
+            font-size: 11px;
+            border-radius: 3px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .duplicate-no {
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        /* ── Confidence ── */
+        .confidence-high { color: #2f6b2f; font-weight: 600; }
+        .confidence-mid  { color: #7a5d00; }
+        .confidence-low  { color: #8a2d2d; }
+
+        /* ── Delete button ── */
+        .btn-delete {
+            background: none;
+            border: 1px solid #e0e0e0;
+            color: #bbb;
+            cursor: pointer;
+            font-size: 13px;
+            line-height: 1;
+            padding: 3px 7px;
+            border-radius: 3px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .btn-delete:hover {
+            background: #fff0f0;
+            border-color: #dfb1b1;
+            color: #8a2d2d;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="header-left">
+                <h1>Invoice Extraction</h1>
+                <p>Processed invoices overview</p>
+                <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+                    <input type="file" name="file" accept=".pdf" required>
+                    <button type="submit">Upload invoice PDF</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>ID</th>
+                        <th>Confidence</th>
+                        <th>Duplicate</th>
+                        <th>File</th>
+                        <th>Description</th>
+                        <th>Supplier</th>
+                        <th>Customer</th>
+                        <th>Address</th>
+                        <th>Invoice #</th>
+                        <th>Invoice Date</th>
+                        <th>Due Date</th>
+                        <th>Cur.</th>
+                        <th>Subtotal</th>
+                        <th>VAT %</th>
+                        <th>VAT</th>
+                        <th>Discount</th>
+                        <th>Total</th>
+                        <th>Supplier VAT</th>
+                        <th>IBAN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <!-- Delete button: submits a POST form to /delete/{id} -->
+                        <td>
+                            <form action="/delete/{{ doc.id }}" method="post"
+                                  onsubmit="return confirm('Delete this invoice?')">
+                                <button type="submit" class="btn-delete" title="Delete">✕</button>
+                            </form>
+                        </td>
+                        <td class="col-id nowrap">{{ doc.id }}</td>
+                        <td class="num">
+                            {% if doc.confidence is not none %}
+                                {% set pct = (doc.confidence * 100)|round(0)|int %}
+                                {% if pct >= 85 %}
+                                    <span class="confidence-high">{{ pct }}%</span>
+                                {% elif pct >= 60 %}
+                                    <span class="confidence-mid">{{ pct }}%</span>
+                                {% else %}
+                                    <span class="confidence-low">{{ pct }}%</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="nowrap">
+                            {% if doc.is_duplicate %}
+                                <span class="duplicate-yes">⚠ Duplicate of #{{ doc.original_id }}</span>
+                            {% else %}
+                                <span class="duplicate-no">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-file">{{ doc.filename or "-" }}</td>
+                        <td class="col-wide">{{ doc.description or "-" }}</td>
+                        <td class="col-wide">{{ doc.supplier_name or "-" }}</td>
+                        <td class="col-wide">{{ doc.customer_name or "-" }}</td>
+                        <td class="col-addr">{{ doc.customer_address or "-" }}</td>
+                        <td class="nowrap">{{ doc.invoice_number or "-" }}</td>
+                        <td class="nowrap">{% if doc.invoice_date %}{{ doc.invoice_date.strftime('%d/%m/%Y') }}{% else %}-{% endif %}</td>
+                        <td class="nowrap">{% if doc.due_date %}{{ doc.due_date.strftime('%d/%m/%Y') }}{% else %}-{% endif %}</td>
+                        <td class="nowrap">{{ doc.currency or "-" }}</td>
+                        <td class="num">{{ doc.subtotal_amount | chf }}</td>
+                        <td class="num">{% if doc.vat_rate is not none %}{{ doc.vat_rate }}%{% else %}-{% endif %}</td>
+                        <td class="num">{{ doc.vat_amount | chf }}</td>
+                        <td class="num">{% if doc.discount_amount %}{{ doc.discount_amount | chf }}{% else %}<span class="muted">-</span>{% endif %}</td>
+                        <td class="num" style="font-weight:600;">{{ doc.total_amount | chf }}</td>
+                        <td class="nowrap">{{ doc.supplier_vat_number or "-" }}</td>
+                        <td class="col-iban">{{ doc.payment_iban or "-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

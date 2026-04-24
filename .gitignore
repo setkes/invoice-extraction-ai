@@ -1,0 +1,26 @@
+# Credentials & secrets
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# PDF uploads — keep folder, ignore contents
+uploads/*
+!uploads/.gitkeep
+
+# Personal documentation
+docs/
+
+# Editor
+.idea/
+.vscode/
+
+# OS
+.DS_Store

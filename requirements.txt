@@ -1,0 +1,8 @@
+fastapi          # Web framework used to create the API endpoints
+uvicorn          # ASGI server that runs FastAPI
+jinja2           # HTML template engine
+python-multipart # Required by FastAPI to handle file uploads
+openai           # Official OpenAI library to call GPT
+sqlmodel         # ORM for FastAPI: define models and it manages the DB
+psycopg2-binary  # PostgreSQL driver required internally by SQLModel/SQLAlchemy
+python-dotenv    # Reads environment variables from the .env file
