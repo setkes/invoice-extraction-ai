@@ -41,7 +41,7 @@ Upload a PDF → GPT reads it → data saved to DB → displayed in a table.
 
 ```bash
 # 1. Clone and create virtual environment
-git clone https://github.com/your-username/invoice-extraction-ai.git
+git clone https://github.com/setkes/invoice-extraction-ai.git
 cd invoice-extraction-ai
 python3 -m venv venv
 source venv/bin/activate
